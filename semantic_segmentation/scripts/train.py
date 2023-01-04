@@ -14,7 +14,7 @@ def train(model, train_ds, val_ds, optimizer, epochs_no=50, patience=5):
     cel_loss = nn.CrossEntropyLoss()
     history = {"train_loss": [], "val_loss": []}
     cooldown = 0
-    batch_size = 16
+    batch_size = 8
     steps_train = len(train_ds)/batch_size
     steps_val = len(val_ds)/batch_size
     if torch.cuda.is_available():
