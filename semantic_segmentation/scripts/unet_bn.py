@@ -156,4 +156,4 @@ def U2NET_lite():
         'stage2d': ['De_2', (6, 128, 16, 64), 64],
         'stage1d': ['De_1', (7, 128, 16, 64), 64],
     }
-    return U2NET(cfgs=lite, out_ch=1)
+    return U2NET(cfgs=lite, out_ch=17)

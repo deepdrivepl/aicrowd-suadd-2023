@@ -1,3 +1,7 @@
+import os
+os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"
+os.environ["CUDA_VISIBLE_DEVICES"]="1"
+
 import argparse
 
 import torch
@@ -14,7 +18,7 @@ def train(model, train_ds, val_ds, optimizer, epochs_no=50, patience=5):
     cel_loss = nn.CrossEntropyLoss()
     history = {"train_loss": [], "val_loss": []}
     cooldown = 0
-    batch_size = 8
+    batch_size = 16
     steps_train = len(train_ds)/batch_size
     steps_val = len(val_ds)/batch_size
     if torch.cuda.is_available():
@@ -33,8 +37,11 @@ def train(model, train_ds, val_ds, optimizer, epochs_no=50, patience=5):
         epoch_val_loss = 0
         for img, target in train_loader:
             img, target = img.to(device), target.to(device)
-            pred = model(img)[0]
-            loss = cel_loss(target, pred)
+            pred = torch.squeeze(model(img)[0])
+            print(pred.shape)
+            print(target.shape)
+            print(target.dtype)
+            loss = cel_loss(pred, torch.squeeze(target))
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
@@ -44,8 +51,8 @@ def train(model, train_ds, val_ds, optimizer, epochs_no=50, patience=5):
             model.eval()
             for img, target in val_loader:
                 img, target = img.to(device), target.to(device)
-                pred = model(img)[0]
-                epoch_val_loss += cel_loss(target, pred)
+                pred = torch.squeeze(model(img)[0])
+                epoch_val_loss += cel_loss(pred, torch.squeeze(target))
 
         epoch_train_loss /= steps_train
         epoch_val_loss /= steps_val
@@ -57,7 +64,7 @@ def train(model, train_ds, val_ds, optimizer, epochs_no=50, patience=5):
               epoch_train_loss, epoch_val_loss))
 
         cur_loss = history["val_loss"][epoch]
-        if epoch != 0 and cur_loss > history["val_loss"][epoch-1]:
+        if epoch != 0 and cur_loss >= history["val_loss"][epoch-1]:
             cooldown += 1
             if cooldown == patience:
                 break

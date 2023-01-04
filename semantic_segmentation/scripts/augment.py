@@ -33,7 +33,7 @@ class ToTensor(torch.nn.Module):
         image = F.pil_to_tensor(image)
         image = F.convert_image_dtype(image)
         target = F.pil_to_tensor(target)
-        target = F.convert_image_dtype(target)
+        target = F.convert_image_dtype(target, torch.long)
         return image, target
 
 
