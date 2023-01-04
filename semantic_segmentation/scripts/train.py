@@ -8,6 +8,7 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from tqdm import tqdm
+import numpy as np
 
 from augment import get_transform
 from dataset import Dataset
@@ -15,7 +16,7 @@ from unet_bn import U2NET_lite
 
 
 def train(model, train_ds, val_ds, optimizer, epochs_no=50, patience=5):
-    cel_loss = nn.CrossEntropyLoss()
+    cel_loss = nn.CrossEntropyLoss(ignore_index=255)
     history = {"train_loss": [], "val_loss": []}
     cooldown = 0
     batch_size = 16
@@ -38,10 +39,7 @@ def train(model, train_ds, val_ds, optimizer, epochs_no=50, patience=5):
         for img, target in train_loader:
             img, target = img.to(device), target.to(device)
             pred = torch.squeeze(model(img)[0])
-            print(pred.shape)
-            print(target.shape)
-            print(target.dtype)
-            loss = cel_loss(pred, torch.squeeze(target))
+            loss = cel_loss(pred, torch.squeeze(target.long()))
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
@@ -52,7 +50,7 @@ def train(model, train_ds, val_ds, optimizer, epochs_no=50, patience=5):
             for img, target in val_loader:
                 img, target = img.to(device), target.to(device)
                 pred = torch.squeeze(model(img)[0])
-                epoch_val_loss += cel_loss(pred, torch.squeeze(target))
+                epoch_val_loss += cel_loss(pred, torch.squeeze(target.long()))
 
         epoch_train_loss /= steps_train
         epoch_val_loss /= steps_val
@@ -82,7 +80,7 @@ if __name__ == '__main__':
     model = U2NET_lite()
     optimizer = optim.Adam(model.parameters(), lr=0.005)
 
-    train_ds = Dataset(args.datafolder, get_transform(True))
+    train_ds = Dataset(args.datafolder, get_transform())
     val_ds = Dataset(args.datafolder, get_transform(), train=False)
 
     model = train(model, train_ds, val_ds, optimizer)
