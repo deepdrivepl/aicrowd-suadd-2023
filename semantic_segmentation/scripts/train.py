@@ -5,9 +5,9 @@ import torch.nn as nn
 import torch.optim as optim
 from tqdm import tqdm
 
-from semantic_segmentation.scripts.augment import get_transform
-from semantic_segmentation.scripts.dataset import Dataset
-from semantic_segmentation.scripts.unet_bn import U2NET_lite
+from augment import get_transform
+from dataset import Dataset
+from unet_bn import U2NET_lite
 
 
 def train(model, train_ds, val_ds, optimizer, epochs_no=50, patience=5):
