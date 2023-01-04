@@ -27,13 +27,9 @@ class Dataset(torch.utils.data.Dataset):
         target_path = os.path.join(self.root, "semantic_annotations",
                                    self.targets[idx])
         img = Image.open(img_path).convert("RGB")
-        width, height = img.size
-        if width != 512 or height != 512:
-            img = img.resize((512, 512))
-        target = Image.open(target_path).convert("RGB")
-        width, height = target.size
-        if width != 512 or height != 512:
-            target = target.resize((512, 512))
+        img = img.resize((775, 1100))
+        target = Image.open(target_path).convert("L")
+        target = target.resize((775, 1100))
         if self.transforms is not None:
             img, target = self.transforms(img, target)
 
@@ -54,9 +50,7 @@ class TestDataset(torch.utils.data.Dataset):
         # load images
         img_path = os.path.join(self.root, "inputs", self.imgs[idx])
         img = Image.open(img_path).convert("RGB")
-        width, height = img.size
-        if width != 512 or height != 512:
-            img = img.resize((512, 512))
+        img = img.resize((775, 1100))
         if self.transforms is not None:
             img = self.transforms(img)
 
