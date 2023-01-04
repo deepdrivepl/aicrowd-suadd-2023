@@ -8,6 +8,7 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from tqdm import tqdm
+from torchmetrics import Accuracy
 import numpy as np
 
 from augment import get_transform
@@ -15,7 +16,7 @@ from dataset import Dataset
 from unet_bn import U2NET_lite
 
 
-def train(model, train_ds, val_ds, optimizer, epochs_no=50, patience=5):
+def train(model, train_ds, val_ds, optimizer, epochs_no=100, patience=5):
     cel_loss = nn.CrossEntropyLoss(ignore_index=255)
     history = {"train_loss": [], "val_loss": []}
     cooldown = 0
@@ -27,6 +28,7 @@ def train(model, train_ds, val_ds, optimizer, epochs_no=50, patience=5):
     else:
         device = torch.device('cpu')
     model.to(device)
+    accuracy = Accuracy(task="multiclass", num_classes=17).to(device)
     train_loader = torch.utils.data.DataLoader(
         train_ds, batch_size=batch_size, shuffle=True, num_workers=8)
     val_loader = torch.utils.data.DataLoader(
@@ -35,7 +37,9 @@ def train(model, train_ds, val_ds, optimizer, epochs_no=50, patience=5):
     for epoch in tqdm(range(epochs_no)):
         model.train()
         epoch_train_loss = 0
+        epoch_train_acc = 0
         epoch_val_loss = 0
+        epoch_val_acc = 0
         for img, target in train_loader:
             img, target = img.to(device), target.to(device)
             pred = torch.squeeze(model(img)[0])
@@ -44,6 +48,8 @@ def train(model, train_ds, val_ds, optimizer, epochs_no=50, patience=5):
             loss.backward()
             optimizer.step()
             epoch_train_loss += loss
+            epoch_train_acc += accuracy(torch.argmax(pred, dim=1),
+                                        torch.squeeze(target))
 
         with torch.no_grad():
             model.eval()
@@ -51,15 +57,21 @@ def train(model, train_ds, val_ds, optimizer, epochs_no=50, patience=5):
                 img, target = img.to(device), target.to(device)
                 pred = torch.squeeze(model(img)[0])
                 epoch_val_loss += cel_loss(pred, torch.squeeze(target.long()))
+                epoch_val_acc += accuracy(torch.argmax(pred, dim=1),
+                                          torch.squeeze(target))
 
         epoch_train_loss /= steps_train
+        epoch_train_acc /= steps_train
         epoch_val_loss /= steps_val
+        epoch_val_acc /= steps_val
         history["train_loss"].append(epoch_train_loss.cpu().detach().numpy())
         history["val_loss"].append(epoch_val_loss.cpu().detach().numpy())
 
         print("EPOCH: {}/{}".format(epoch + 1, epochs_no))
         print("Train loss: {:.6f}, Validation loss: {:.4f}".format(
               epoch_train_loss, epoch_val_loss))
+        print("Train accuracy: {:.6f}, Validation accuracy: {:.6f}".format(
+              epoch_train_acc, epoch_val_acc))
 
         cur_loss = history["val_loss"][epoch]
         if epoch != 0 and cur_loss >= history["val_loss"][epoch-1]:
