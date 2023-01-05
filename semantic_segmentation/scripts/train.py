@@ -16,8 +16,7 @@ from dataset import Dataset
 from unet_bn import U2NET_lite
 
 
-def train(model, train_ds, val_ds, optimizer, epochs_no=100, patience=5,
-          writer=None):
+def train(model, train_ds, val_ds, optimizer, writer, epochs_no=100, patience=5):
     cel_loss = nn.CrossEntropyLoss(ignore_index=255)
     history = {"train_loss": [], "val_loss": []}
     cooldown = 0
