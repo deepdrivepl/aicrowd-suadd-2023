@@ -18,5 +18,12 @@ class UNETModel:
             An 2D image with the pixels values corresponding
             to the label number
         """
-        segmentation_results = self.model(image_to_segment)[0]
+        if torch.cuda.is_available():
+            device = torch.device('cuda')
+        else:
+            device = torch.device('cpu')
+        model.to(device)
+        self.model.eval()
+        pred = self.model(image_to_segment)
+        segmentation_results = torch.argmax(pred, dim=1).cpu().detach().numpy()
         return segmentation_results

@@ -94,7 +94,7 @@ if __name__ == '__main__':
     parser.add_argument('--datafolder', type=str, default="")
     args = parser.parse_args()
     model = U2NET_lite()
-    optimizer = optim.Adam(model.parameters(), lr=0.01)
+    optimizer = optim.Adam(model.parameters(), lr=0.005)
 
     train_ds = Dataset(args.datafolder, get_transform())
     val_ds = Dataset(args.datafolder, get_transform(), train=False)
