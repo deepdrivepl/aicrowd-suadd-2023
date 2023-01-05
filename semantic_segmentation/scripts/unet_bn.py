@@ -117,8 +117,8 @@ class U2NET(nn.Module):
             maps.reverse()
             x = torch.cat(maps, 1)
             x = getattr(self, 'outconv')(x)
-            maps.insert(0, x)
-            return [torch.sigmoid(x) for x in maps]
+            # maps.insert(0, x)
+            return x
 
         unet(x)
         maps = fuse()

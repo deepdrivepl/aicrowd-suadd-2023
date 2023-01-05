@@ -43,7 +43,7 @@ def train(model, train_ds, val_ds, optimizer, epochs_no=100, patience=5):
         epoch_val_acc = 0
         for img, target in train_loader:
             img, target = img.to(device), target.to(device)
-            pred = torch.squeeze(model(img)[0])
+            pred = model(img)
             loss = cel_loss(pred, torch.squeeze(target.long()))
             optimizer.zero_grad()
             loss.backward()
@@ -56,14 +56,14 @@ def train(model, train_ds, val_ds, optimizer, epochs_no=100, patience=5):
             model.eval()
             for img, target in val_loader:
                 img, target = img.to(device), target.to(device)
-                pred = torch.squeeze(model(img)[0])
+                pred = model(img)
                 epoch_val_loss += cel_loss(pred,
                                            torch.squeeze(target.long())
                                           ).cpu().detach().numpy()
                 epoch_val_acc += accuracy(torch.argmax(pred, dim=1),
                                           torch.squeeze(target)
                                          ).cpu().detach().numpy()
-        del img, target
+
         epoch_train_loss /= steps_train
         epoch_train_acc /= steps_train
         epoch_val_loss /= steps_val
