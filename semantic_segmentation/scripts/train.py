@@ -28,7 +28,8 @@ def train(model, train_ds, val_ds, optimizer, epochs_no=100, patience=5):
     else:
         device = torch.device('cpu')
     model.to(device)
-    accuracy = Accuracy(task="multiclass", num_classes=17).to(device)
+    accuracy = Accuracy(task="multiclass", num_classes=16,
+                       ignore_index=255).to(device)
     train_loader = torch.utils.data.DataLoader(
         train_ds, batch_size=batch_size, shuffle=True, num_workers=8)
     val_loader = torch.utils.data.DataLoader(
@@ -47,25 +48,28 @@ def train(model, train_ds, val_ds, optimizer, epochs_no=100, patience=5):
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
-            epoch_train_loss += loss
+            epoch_train_loss += loss.cpu().detach().numpy()
             epoch_train_acc += accuracy(torch.argmax(pred, dim=1),
-                                        torch.squeeze(target))
-
+                                        torch.squeeze(target)
+                                       ).cpu().detach().numpy()
         with torch.no_grad():
             model.eval()
             for img, target in val_loader:
                 img, target = img.to(device), target.to(device)
                 pred = torch.squeeze(model(img)[0])
-                epoch_val_loss += cel_loss(pred, torch.squeeze(target.long()))
+                epoch_val_loss += cel_loss(pred,
+                                           torch.squeeze(target.long())
+                                          ).cpu().detach().numpy()
                 epoch_val_acc += accuracy(torch.argmax(pred, dim=1),
-                                          torch.squeeze(target))
-
+                                          torch.squeeze(target)
+                                         ).cpu().detach().numpy()
+        del img, target
         epoch_train_loss /= steps_train
         epoch_train_acc /= steps_train
         epoch_val_loss /= steps_val
         epoch_val_acc /= steps_val
-        history["train_loss"].append(epoch_train_loss.cpu().detach().numpy())
-        history["val_loss"].append(epoch_val_loss.cpu().detach().numpy())
+        history["train_loss"].append(epoch_train_loss)
+        history["val_loss"].append(epoch_val_loss)
 
         print("EPOCH: {}/{}".format(epoch + 1, epochs_no))
         print("Train loss: {:.6f}, Validation loss: {:.4f}".format(
@@ -90,7 +94,7 @@ if __name__ == '__main__':
     parser.add_argument('--datafolder', type=str, default="")
     args = parser.parse_args()
     model = U2NET_lite()
-    optimizer = optim.Adam(model.parameters(), lr=0.005)
+    optimizer = optim.Adam(model.parameters(), lr=0.01)
 
     train_ds = Dataset(args.datafolder, get_transform())
     val_ds = Dataset(args.datafolder, get_transform(), train=False)
