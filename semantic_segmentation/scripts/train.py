@@ -1,6 +1,6 @@
 import os
-os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"
-os.environ["CUDA_VISIBLE_DEVICES"]="1"
+os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
+os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 
 import argparse
 
@@ -9,14 +9,15 @@ import torch.nn as nn
 import torch.optim as optim
 from tqdm import tqdm
 from torchmetrics import Accuracy
-import numpy as np
+from torch.utils.tensorboard import SummaryWriter
 
 from augment import get_transform
 from dataset import Dataset
 from unet_bn import U2NET_lite
 
 
-def train(model, train_ds, val_ds, optimizer, epochs_no=100, patience=5):
+def train(model, train_ds, val_ds, optimizer, epochs_no=100, patience=5,
+          writer=None):
     cel_loss = nn.CrossEntropyLoss(ignore_index=255)
     history = {"train_loss": [], "val_loss": []}
     cooldown = 0
@@ -29,7 +30,7 @@ def train(model, train_ds, val_ds, optimizer, epochs_no=100, patience=5):
         device = torch.device('cpu')
     model.to(device)
     accuracy = Accuracy(task="multiclass", num_classes=16,
-                       ignore_index=255).to(device)
+                        ignore_index=255).to(device)
     train_loader = torch.utils.data.DataLoader(
         train_ds, batch_size=batch_size, shuffle=True, num_workers=8)
     val_loader = torch.utils.data.DataLoader(
@@ -51,7 +52,7 @@ def train(model, train_ds, val_ds, optimizer, epochs_no=100, patience=5):
             epoch_train_loss += loss.cpu().detach().numpy()
             epoch_train_acc += accuracy(torch.argmax(pred, dim=1),
                                         torch.squeeze(target)
-                                       ).cpu().detach().numpy()
+                                        ).cpu().detach().numpy()
         with torch.no_grad():
             model.eval()
             for img, target in val_loader:
@@ -59,10 +60,10 @@ def train(model, train_ds, val_ds, optimizer, epochs_no=100, patience=5):
                 pred = model(img)
                 epoch_val_loss += cel_loss(pred,
                                            torch.squeeze(target.long())
-                                          ).cpu().detach().numpy()
+                                           ).cpu().detach().numpy()
                 epoch_val_acc += accuracy(torch.argmax(pred, dim=1),
                                           torch.squeeze(target)
-                                         ).cpu().detach().numpy()
+                                          ).cpu().detach().numpy()
 
         epoch_train_loss /= steps_train
         epoch_train_acc /= steps_train
@@ -71,11 +72,18 @@ def train(model, train_ds, val_ds, optimizer, epochs_no=100, patience=5):
         history["train_loss"].append(epoch_train_loss)
         history["val_loss"].append(epoch_val_loss)
 
-        print("EPOCH: {}/{}".format(epoch + 1, epochs_no))
-        print("Train loss: {:.6f}, Validation loss: {:.4f}".format(
-              epoch_train_loss, epoch_val_loss))
-        print("Train accuracy: {:.6f}, Validation accuracy: {:.6f}".format(
-              epoch_train_acc, epoch_val_acc))
+        writer.add_scalar('training loss',
+                          epoch_train_loss,
+                          epoch)
+        writer.add_scalar('training accuracy',
+                          epoch_train_acc,
+                          epoch)
+        writer.add_scalar('validation loss',
+                          epoch_val_loss,
+                          epoch)
+        writer.add_scalar('validation accuracy',
+                          epoch_val_acc,
+                          epoch)
 
         cur_loss = history["val_loss"][epoch]
         if epoch != 0 and cur_loss >= history["val_loss"][epoch-1]:
@@ -90,6 +98,7 @@ def train(model, train_ds, val_ds, optimizer, epochs_no=100, patience=5):
 
 
 if __name__ == '__main__':
+    writer = SummaryWriter('runs/u2net')
     parser = argparse.ArgumentParser()
     parser.add_argument('--datafolder', type=str, default="")
     args = parser.parse_args()
@@ -99,4 +108,4 @@ if __name__ == '__main__':
     train_ds = Dataset(args.datafolder, get_transform())
     val_ds = Dataset(args.datafolder, get_transform(), train=False)
 
-    model = train(model, train_ds, val_ds, optimizer)
+    model = train(model, train_ds, val_ds, optimizer, writer)

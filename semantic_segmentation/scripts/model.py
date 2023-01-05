@@ -22,7 +22,7 @@ class UNETModel:
             device = torch.device('cuda')
         else:
             device = torch.device('cpu')
-        model.to(device)
+        self.model.to(device)
         self.model.eval()
         pred = self.model(image_to_segment)
         segmentation_results = torch.argmax(pred, dim=1).cpu().detach().numpy()
