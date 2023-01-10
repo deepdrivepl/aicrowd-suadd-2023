@@ -42,7 +42,7 @@ class ToTensor(torch.nn.Module):
     ) -> typing.Tuple[torch.Tensor, torch.Tensor]:
         image = F.to_tensor(image)
         image = F.convert_image_dtype(image)
-        target = F.to_tensor(target)
+        target = torch.as_tensor(target, dtype=torch.uint8)
         return image, target
 
 
