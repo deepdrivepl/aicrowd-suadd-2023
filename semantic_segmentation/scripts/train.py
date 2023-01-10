@@ -16,7 +16,7 @@ from dataset import Dataset
 from unet_bn import U2NET_lite
 
 
-def train(model, train_ds, val_ds, optimizer, writer, epochs_no=100, patience=5):
+def train(model, train_ds, val_ds, optimizer, writer, epochs_no=1000, patience=5):
     cel_loss = nn.CrossEntropyLoss(ignore_index=255)
     history = {"train_loss": [], "val_loss": []}
     cooldown = 0
@@ -34,7 +34,8 @@ def train(model, train_ds, val_ds, optimizer, writer, epochs_no=100, patience=5)
         train_ds, batch_size=batch_size, shuffle=True, num_workers=8)
     val_loader = torch.utils.data.DataLoader(
         val_ds, batch_size=batch_size, shuffle=True, num_workers=8)
-
+    print(f'len ds = {len(train_ds)}')
+    print(f'len dl = {len(train_loader)}')
     for epoch in tqdm(range(epochs_no)):
         model.train()
         epoch_train_loss = 0
@@ -102,7 +103,8 @@ if __name__ == '__main__':
     parser.add_argument('--datafolder', type=str, default="")
     args = parser.parse_args()
     model = U2NET_lite()
-    optimizer = optim.Adam(model.parameters(), lr=0.005)
+    #optimizer = optim.Adam(model.parameters(), lr=0.005)
+    optimizer = optim.RAdam(model.parameters(), lr=3e-4)
 
     train_ds = Dataset(args.datafolder, get_transform())
     val_ds = Dataset(args.datafolder, get_transform(), train=False)
