@@ -10,13 +10,25 @@ import torch.optim as optim
 from tqdm import tqdm
 from torchmetrics import Accuracy
 from torch.utils.tensorboard import SummaryWriter
+from torchvision.utils import make_grid
+import torchvision.transforms.functional as F
 
 from augment import get_transform
 from dataset import Dataset
 from unet_bn import U2NET_lite
 
 
-def train(model, train_ds, val_ds, optimizer, writer, epochs_no=1000, patience=5):
+def show_results(img, pred):
+    images = []
+    img = F.convert_image_dtype(img, torch.uint8)
+    for i in range(img.shape[0]):
+        images.append(img[i])
+        images.append(pred[i])
+    return make_grid(images)
+
+
+def train(model, train_ds, val_ds, optimizer, writer,
+          epochs_no=1000, patience=5):
     cel_loss = nn.CrossEntropyLoss(ignore_index=255)
     history = {"train_loss": [], "val_loss": []}
     cooldown = 0
@@ -42,7 +54,7 @@ def train(model, train_ds, val_ds, optimizer, writer, epochs_no=1000, patience=5
         epoch_train_acc = 0
         epoch_val_loss = 0
         epoch_val_acc = 0
-        for img, target in train_loader:
+        for i, img, target in enumerate(train_loader):
             img, target = img.to(device), target.to(device)
             pred = model(img)
             loss = cel_loss(pred, torch.squeeze(target.long()))
@@ -53,6 +65,11 @@ def train(model, train_ds, val_ds, optimizer, writer, epochs_no=1000, patience=5
             epoch_train_acc += accuracy(torch.argmax(pred, dim=1),
                                         torch.squeeze(target)
                                         ).cpu().detach().numpy()
+            if i == 0:
+                writer.add_figure('predictions',
+                                  show_results(img, pred),
+                                  global_step=epoch)
+
         with torch.no_grad():
             model.eval()
             for img, target in val_loader:
