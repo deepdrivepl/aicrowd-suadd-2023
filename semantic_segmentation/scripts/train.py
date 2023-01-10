@@ -12,19 +12,36 @@ from torchmetrics import Accuracy
 from torch.utils.tensorboard import SummaryWriter
 from torchvision.utils import make_grid
 import torchvision.transforms.functional as F
+import numpy as np
+import matplotlib.pyplot as plt
 
 from augment import get_transform
 from dataset import Dataset
 from unet_bn import U2NET_lite
 
 
-def show_results(img, pred):
+def show_results(imgs, preds, gts):
+    fig = plt.figure(figsize=(12, 48))
+    colormap = np.array([(16, 64,16), (255,0,0), (0,255,0), (0,0,255),
+                         (255,255,0), (255,0,255), (0,255,255), (255,255,255),
+                         (128,64,16), (128,16,64), (64,16,128), (16,64,128),
+                         (32,64,16), (32,16,64), (64,16,32), (16,64,32)
+                        ], dtype=np.uint8)
+
+    colormap255 = np.zeros((256,3),dtype=np.uint8)
+    colormap255[:16]=colormap
+
     images = []
-    img = F.convert_image_dtype(img, torch.uint8)
-    for i in range(img.shape[0]):
-        images.append(img[i])
-        images.append(pred[i])
-    return make_grid(images)
+    preds = torch.argmax(preds, dim=1).cpu().detach().numpy()
+    gts = gts.cpu().detach().numpy()
+    imgs = imgs.cpu().detach().permute(0, 2, 3, 1).numpy()
+    preds = colormap255[preds]
+    gts = colormap255[gts]
+    for im, gt, pred in zip(imgs, gts, preds):
+        images.append(np.concatenate((im, gt, pred),axis=1))
+    res = np.concatenate(images, axis=0)
+    plt.imshow(res)
+    return fig
 
 
 def train(model, train_ds, val_ds, optimizer, writer,
@@ -54,7 +71,8 @@ def train(model, train_ds, val_ds, optimizer, writer,
         epoch_train_acc = 0
         epoch_val_loss = 0
         epoch_val_acc = 0
-        for i, img, target in enumerate(train_loader):
+        for i, data in enumerate(train_loader, 0):
+            img, target = data
             img, target = img.to(device), target.to(device)
             pred = model(img)
             loss = cel_loss(pred, torch.squeeze(target.long()))
@@ -67,7 +85,7 @@ def train(model, train_ds, val_ds, optimizer, writer,
                                         ).cpu().detach().numpy()
             if i == 0:
                 writer.add_figure('predictions',
-                                  show_results(img, pred),
+                                  show_results(img, pred, target),
                                   global_step=epoch)
 
         with torch.no_grad():
