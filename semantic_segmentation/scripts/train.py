@@ -14,6 +14,7 @@ from torchvision.utils import make_grid
 import torchvision.transforms.functional as F
 import numpy as np
 import matplotlib.pyplot as plt
+from datetime import datetime
 
 from augment import get_transform
 from dataset import Dataset
@@ -21,7 +22,8 @@ from unet_bn import U2NET_lite
 
 
 def show_results(imgs, preds, gts):
-    fig = plt.figure(figsize=(12, 48))
+    fig, ax = plt.subplots(frameon=False)
+    fig.set_size_inches(6, 36)
     colormap = np.array([(16, 64,16), (255,0,0), (0,255,0), (0,0,255),
                          (255,255,0), (255,0,255), (0,255,255), (255,255,255),
                          (128,64,16), (128,16,64), (64,16,128), (16,64,128),
@@ -40,12 +42,14 @@ def show_results(imgs, preds, gts):
     for im, gt, pred in zip(imgs, gts, preds):
         images.append(np.concatenate((im, gt, pred),axis=1))
     res = np.concatenate(images, axis=0)
-    plt.imshow(res)
+    plt.axis('off')
+    plt.tight_layout()
+    ax.imshow(res)
     return fig
 
 
 def train(model, train_ds, val_ds, optimizer, writer,
-          epochs_no=1000, patience=5):
+          epochs_no=100, patience=5):
     cel_loss = nn.CrossEntropyLoss(ignore_index=255)
     history = {"train_loss": [], "val_loss": []}
     cooldown = 0
@@ -133,7 +137,8 @@ def train(model, train_ds, val_ds, optimizer, writer,
 
 
 if __name__ == '__main__':
-    writer = SummaryWriter('runs/u2net')
+    unique_name=datetime.now().strftime("%Y_%m_%d-%H_%M_%S")
+    writer = SummaryWriter('runs/u2net/'+unique_name)
     parser = argparse.ArgumentParser()
     parser.add_argument('--datafolder', type=str, default="")
     args = parser.parse_args()
