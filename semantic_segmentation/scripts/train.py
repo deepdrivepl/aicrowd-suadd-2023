@@ -24,14 +24,15 @@ from unet_bn import U2NET_lite
 def show_results(imgs, preds, gts):
     fig, ax = plt.subplots(frameon=False)
     fig.set_size_inches(6, 36)
-    colormap = np.array([(16, 64,16), (255,0,0), (0,255,0), (0,0,255),
-                         (255,255,0), (255,0,255), (0,255,255), (255,255,255),
-                         (128,64,16), (128,16,64), (64,16,128), (16,64,128),
-                         (32,64,16), (32,16,64), (64,16,32), (16,64,32)
-                        ], dtype=np.uint8)
+    colormap = np.array([(16, 64, 16), (255, 0, 0), (0, 255, 0), (0, 0, 255),
+                         (255, 255, 0), (255, 0, 255), (0, 255, 255),
+                         (255, 255, 255), (128, 64, 16), (128, 16, 64),
+                         (64, 16, 128), (16, 64, 128), (32, 64, 16),
+                         (32, 16, 64), (64, 16, 32), (16, 64, 32)
+                         ], dtype=np.uint8)
 
-    colormap255 = np.zeros((256,3),dtype=np.uint8)
-    colormap255[:16]=colormap
+    colormap255 = np.zeros((256, 3), dtype=np.uint8)
+    colormap255[:16] = colormap
 
     images = []
     preds = torch.argmax(preds, dim=1).cpu().detach().numpy()
@@ -40,7 +41,7 @@ def show_results(imgs, preds, gts):
     preds = colormap255[preds]
     gts = colormap255[gts]
     for im, gt, pred in zip(imgs, gts, preds):
-        images.append(np.concatenate((im, gt, pred),axis=1))
+        images.append(np.concatenate((im, gt, pred), axis=1))
     res = np.concatenate(images, axis=0)
     plt.axis('off')
     plt.tight_layout()
@@ -137,13 +138,13 @@ def train(model, train_ds, val_ds, optimizer, writer,
 
 
 if __name__ == '__main__':
-    unique_name=datetime.now().strftime("%Y_%m_%d-%H_%M_%S")
+    unique_name = datetime.now().strftime("%Y_%m_%d-%H_%M_%S")
     writer = SummaryWriter('runs/u2net/'+unique_name)
     parser = argparse.ArgumentParser()
     parser.add_argument('--datafolder', type=str, default="")
     args = parser.parse_args()
     model = U2NET_lite()
-    #optimizer = optim.Adam(model.parameters(), lr=0.005)
+    # optimizer = optim.Adam(model.parameters(), lr=0.005)
     optimizer = optim.RAdam(model.parameters(), lr=3e-4)
 
     train_ds = Dataset(args.datafolder, get_transform())
