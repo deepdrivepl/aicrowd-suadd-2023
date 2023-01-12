@@ -154,10 +154,11 @@ if __name__ == "__main__":
     writer = SummaryWriter("runs/u2net/" + unique_name)
     parser = argparse.ArgumentParser()
     parser.add_argument("--datafolder", type=str, default="")
+    parser.add_argument("--lr", type=float, default=3e-4)
     args = parser.parse_args()
     model = U2NET_lite()
     # optimizer = optim.Adam(model.parameters(), lr=0.005)
-    optimizer = optim.RAdam(model.parameters(), lr=3e-4)
+    optimizer = optim.RAdam(model.parameters(), lr=args.lr)
 
     train_ds = Dataset(args.datafolder, get_transform(train=True))
     val_ds = Dataset(args.datafolder, get_transform(), train=False)
