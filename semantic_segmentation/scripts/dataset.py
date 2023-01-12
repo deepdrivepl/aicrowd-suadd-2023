@@ -14,28 +14,28 @@ class Dataset(torch.utils.data.Dataset):
         self.imgs = list(sorted(os.listdir(os.path.join(root, "inputs"))))
         count = len(self.imgs)
         if train:
-            self.imgs = self.imgs[int(count*0.8):]
-            self.targets = list(sorted(os.listdir(os.path.join(root,
-                                "semantic_annotations"))))[int(count*0.8):]
+            self.imgs = self.imgs[int(count * 0.8) :]
+            self.targets = list(
+                sorted(os.listdir(os.path.join(root, "semantic_annotations")))
+            )[int(count * 0.8) :]
         else:
-            self.imgs = self.imgs[:int(count*0.8)]
-            self.targets = list(sorted(os.listdir(os.path.join(root,
-                                "semantic_annotations"))))[:int(count*0.8)]
+            self.imgs = self.imgs[: int(count * 0.8)]
+            self.targets = list(
+                sorted(os.listdir(os.path.join(root, "semantic_annotations")))
+            )[: int(count * 0.8)]
 
     def __getitem__(self, idx):
         # load images
         img_path = os.path.join(self.root, "inputs", self.imgs[idx])
-        target_path = os.path.join(self.root, "semantic_annotations",
-                                   self.targets[idx])
+        target_path = os.path.join(self.root, "semantic_annotations", self.targets[idx])
         img = Image.open(img_path).convert("RGB")
         img = np.array(img)
-        # img = img.resize((190, 275))
         target = Image.open(target_path).convert("L")
         target = np.array(target)
-        # target = target.resize((190, 275))
         if self.transforms is not None:
-            img, target = self.transforms(img, target)
-
+            transformed = self.transforms(image=img, mask=target)
+            img = transformed["image"]
+            target = transformed["mask"]
         return img, target
 
     def __len__(self):
@@ -53,7 +53,6 @@ class TestDataset(torch.utils.data.Dataset):
         # load images
         img_path = os.path.join(self.root, "inputs", self.imgs[idx])
         img = Image.open(img_path).convert("RGB")
-        # img = img.resize((190, 275))
         if self.transforms is not None:
             img = self.transforms(img)
 
