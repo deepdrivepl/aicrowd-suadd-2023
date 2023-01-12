@@ -18,8 +18,9 @@ def get_transform(size=(256, 384), train=False):
     return A.Compose(augs)
 
 
-def get_test_transform():
+def get_test_transform(size=(256, 384)):
     augs = []
-    # augs.append(A.Resize(190, 275))
+    augs.append(A.Resize(*size))
+    augs.append(A.Normalize(mean=(0.5, 0.5, 0.5), std=(0.5, 0.5, 0.5)))
     augs.append(ToTensorV2())
     return A.Compose(augs)
