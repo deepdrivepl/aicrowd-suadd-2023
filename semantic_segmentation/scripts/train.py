@@ -147,7 +147,7 @@ if __name__ == '__main__':
     # optimizer = optim.Adam(model.parameters(), lr=0.005)
     optimizer = optim.RAdam(model.parameters(), lr=3e-4)
 
-    train_ds = Dataset(args.datafolder, get_transform())
+    train_ds = Dataset(args.datafolder, get_transform(True))
     val_ds = Dataset(args.datafolder, get_transform(), train=False)
 
     model = train(model, train_ds, val_ds, optimizer, writer)

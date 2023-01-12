@@ -10,6 +10,7 @@ def get_transform(train=False):
         augments.append(A.RandomRotate90(p=0.5))
 
     augments.append(A.Resize(190, 275))
+    augments.append(A.Normalize(mean=(0, 0, 0), std=(1, 1, 1)))
     augments.append(ToTensorV2())
     transform = A.Compose(augments)
     return transform
