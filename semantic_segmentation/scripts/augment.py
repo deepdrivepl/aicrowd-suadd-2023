@@ -7,7 +7,7 @@ def get_transform(size=(256, 384), train=False):
     if train:
         augs.append(
             A.ShiftScaleRotate(
-                shift_limit=0.25, scale_limit=(-0.3, 0.5), rotate_limit=20
+                shift_limit=0.25, scale_limit=(-0.4, 0.6), rotate_limit=20
             )
         )
         augs.append(A.HorizontalFlip(p=0.5))
