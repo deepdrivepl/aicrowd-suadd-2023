@@ -20,16 +20,15 @@ from augment import get_transform
 from dataset import Dataset
 
 
-class UNET_LT(pl.LightningModule):
-    def __init__(self, lr, **kwargs):
+class Suad_Semseg(pl.LightningModule):
+    def __init__(self, lr, num_classes, **kwargs):
         super().__init__()
-        self.Net = U2NET_lite()
-        self.Net.cuda(1)
+        self.net = U2NET_lite()
         self.loss = nn.CrossEntropyLoss(ignore_index=255)
         self.lr = lr
         self.accuracy = Accuracy(
-            task="multiclass", num_classes=16, ignore_index=255
-        ).cuda(1)
+            task="multiclass", num_classes=num_classes, ignore_index=255
+        )
         self.save_hyperparameters()
 
     @staticmethod
@@ -39,7 +38,7 @@ class UNET_LT(pl.LightningModule):
         return parent_parser
 
     def forward(self, x):
-        pred = self.Net(x)
+        pred = self.net(x)
         return pred
 
     def configure_optimizers(self):
@@ -48,24 +47,21 @@ class UNET_LT(pl.LightningModule):
 
     def training_step(self, train_batch, batch_idx):
         img, target = train_batch
-        img = img.cuda(1)
-        target = target.cuda(1)
-        pred = self.Net(img)
+        pred = self.net(img)
         loss = self.loss(pred, torch.squeeze(target.long()))
         acc = self.accuracy(torch.argmax(pred, dim=1), torch.squeeze(target))
         self.log("train_loss", loss)
         self.log("train_acc", acc)
         if batch_idx == 0:
-            tensorboard = self.logger.experiment
-            tensorboard.add_figure("predictions", show_results(img, pred, target))
+            self.logger.experiment.add_figure(
+                "predictions", show_results(img, pred, target)
+            )
         return loss
 
     def validation_step(self, val_batch, batch_idx):
         img, target = val_batch
-        img = img.cuda(1)
-        target = target.cuda(1)
-        pred = self.Net(img)
-        loss = self.loss(pred, torch.squeeze(target.long()))
+        pred = self.net(img)
+        loss = self.loss(pred.detach(), torch.squeeze(target.long()))
         acc = self.accuracy(torch.argmax(pred, dim=1), torch.squeeze(target))
         self.log("val_loss", loss)
         self.log("val_acc", acc)
@@ -122,8 +118,9 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--datafolder", type=str, default="")
     parser.add_argument("--batch_size", type=int, default=16)
-    parser = UNET_LT.add_model_specific_args(parser)
+    parser = Suad_Semseg.add_model_specific_args(parser)
     args = parser.parse_args()
+    dict_args = vars(args)
 
     train_ds = Dataset(args.datafolder, get_transform(train=True))
     val_ds = Dataset(args.datafolder, get_transform(), train=False)
@@ -134,7 +131,7 @@ if __name__ == "__main__":
         val_ds, batch_size=args.batch_size, shuffle=True, num_workers=8
     )
 
-    model = UNET_LT(args)
+    model = Suad_Semseg(**dict_args)
     logger = TensorBoardLogger("tb_logs", name="u2net")
     callback = EarlyStopping(monitor="val_loss", mode="min", patience=5)
     trainer = pl.Trainer(max_epochs=100, logger=logger, callbacks=[callback])
