@@ -140,5 +140,11 @@ if __name__ == "__main__":
     model = SuadSemseg(**dict_args)
     logger = TensorBoardLogger("tb_logs", name="u2net")
     callback = EarlyStopping(monitor="val_loss", mode="min", patience=5)
-    trainer = pl.Trainer(max_epochs=100, logger=logger, callbacks=[callback], accelerator='gpu', devices=[1])
+    trainer = pl.Trainer(
+        max_epochs=100,
+        logger=logger,
+        callbacks=[callback],
+        accelerator="gpu",
+        devices=[1],
+    )
     trainer.fit(model, train_loader, val_loader)
