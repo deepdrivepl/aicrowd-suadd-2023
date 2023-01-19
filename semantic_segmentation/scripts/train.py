@@ -124,7 +124,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
     dict_args = vars(args)
 
-    net = architectures[args.net]
+    net = architectures[args.net]()
 
     train_ds = Dataset(args.datafolder, get_transform(train=True))
     val_ds = Dataset(args.datafolder, get_transform(), train=False)
