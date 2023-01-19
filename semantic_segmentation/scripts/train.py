@@ -35,6 +35,7 @@ class SuadSemseg(pl.LightningModule):
     def add_model_specific_args(parent_parser):
         parser = parent_parser.add_argument_group("U2NetModel")
         parser.add_argument("--lr", type=float, default=3e-4)
+        parser.add_argument("--num_classes", type=int, default=16)
         return parent_parser
 
     def forward(self, x):
@@ -134,8 +135,9 @@ if __name__ == "__main__":
     val_loader = torch.utils.data.DataLoader(
         val_ds, batch_size=args.batch_size, shuffle=True, num_workers=8
     )
-
-    model = SuadSemseg(net, **dict_args)
+    dict_args = dict(dict_args)
+    dict_args["net"] = net
+    model = SuadSemseg(**dict_args)
     logger = TensorBoardLogger("tb_logs", name="u2net")
     callback = EarlyStopping(monitor="val_loss", mode="min", patience=5)
     trainer = pl.Trainer(max_epochs=100, logger=logger, callbacks=[callback], accelerator='gpu', devices=[1])
