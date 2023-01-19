@@ -115,7 +115,7 @@ def show_results(imgs, preds, gts):
 
 
 if __name__ == "__main__":
-    architectures = dict(u2net=U2NET_lite())
+    architectures = dict(u2net=U2NET_lite)
     parser = argparse.ArgumentParser()
     parser.add_argument("--datafolder", type=str, default="")
     parser.add_argument("--batch_size", type=int, default=16)
@@ -138,5 +138,5 @@ if __name__ == "__main__":
     model = SuadSemseg(net, **dict_args)
     logger = TensorBoardLogger("tb_logs", name="u2net")
     callback = EarlyStopping(monitor="val_loss", mode="min", patience=5)
-    trainer = pl.Trainer(max_epochs=100, logger=logger, callbacks=[callback], accelerator='gpu')
+    trainer = pl.Trainer(max_epochs=100, logger=logger, callbacks=[callback], accelerator='gpu', devices=[1])
     trainer.fit(model, train_loader, val_loader)
