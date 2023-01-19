@@ -21,15 +21,23 @@ from dataset import Dataset
 
 
 class UNET_LT(pl.LightningModule):
-    def __init__(self):
+    def __init__(self, lr, **kwargs):
         super().__init__()
         self.Net = U2NET_lite()
         self.Net.cuda(1)
         self.loss = nn.CrossEntropyLoss(ignore_index=255)
-        self.lr = 3e-4
+        self.lr = lr
         self.accuracy = Accuracy(
             task="multiclass", num_classes=16, ignore_index=255
         ).cuda(1)
+        self.save_hyperparameters()
+
+    @staticmethod
+    def add_model_specific_args(parent_parser):
+        parser = parent_parser.add_argument_group("U2NetModel")
+        parser.add_argument("--lr", type=float, default=3e-4)
+        return parent_parser
+
 
     def forward(self, x):
         pred = self.Net(x)
@@ -114,8 +122,8 @@ def show_results(imgs, preds, gts):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--datafolder", type=str, default="")
-    parser.add_argument("--lr", type=float, default=3e-4)
     parser.add_argument("--batch_size", type=int, default=16)
+    parser = UNET_LT.add_model_specific_args(parser)
     args = parser.parse_args()
 
     train_ds = Dataset(args.datafolder, get_transform(train=True))
@@ -127,7 +135,7 @@ if __name__ == "__main__":
         val_ds, batch_size=args.batch_size, shuffle=True, num_workers=8
     )
 
-    model = UNET_LT()
+    model = UNET_LT(args)
     logger = TensorBoardLogger("tb_logs", name="u2net")
     callback = EarlyStopping(monitor="val_loss", mode="min", patience=5)
     trainer = pl.Trainer(max_epochs=100, logger=logger, callbacks=[callback])
