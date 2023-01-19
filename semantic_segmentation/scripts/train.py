@@ -38,7 +38,6 @@ class UNET_LT(pl.LightningModule):
         parser.add_argument("--lr", type=float, default=3e-4)
         return parent_parser
 
-
     def forward(self, x):
         pred = self.Net(x)
         return pred
