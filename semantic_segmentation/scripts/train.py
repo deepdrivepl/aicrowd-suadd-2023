@@ -21,9 +21,9 @@ from dataset import Dataset
 
 
 class Suad_Semseg(pl.LightningModule):
-    def __init__(self, lr, num_classes, **kwargs):
+    def __init__(self, arch, lr, num_classes, **kwargs):
         super().__init__()
-        self.net = U2NET_lite()
+        self.net = arch()
         self.loss = nn.CrossEntropyLoss(ignore_index=255)
         self.lr = lr
         self.accuracy = Accuracy(
@@ -115,12 +115,16 @@ def show_results(imgs, preds, gts):
 
 
 if __name__ == "__main__":
+    architectures = dict(u2net=U2NET_lite())
     parser = argparse.ArgumentParser()
     parser.add_argument("--datafolder", type=str, default="")
     parser.add_argument("--batch_size", type=int, default=16)
+    parser.add_argument("--arch", type=str, default="u2net")
     parser = Suad_Semseg.add_model_specific_args(parser)
     args = parser.parse_args()
     dict_args = vars(args)
+
+    arch = architectures[args.arch]
 
     train_ds = Dataset(args.datafolder, get_transform(train=True))
     val_ds = Dataset(args.datafolder, get_transform(), train=False)
@@ -131,7 +135,7 @@ if __name__ == "__main__":
         val_ds, batch_size=args.batch_size, shuffle=True, num_workers=8
     )
 
-    model = Suad_Semseg(**dict_args)
+    model = Suad_Semseg(arch, **dict_args)
     logger = TensorBoardLogger("tb_logs", name="u2net")
     callback = EarlyStopping(monitor="val_loss", mode="min", patience=5)
     trainer = pl.Trainer(max_epochs=100, logger=logger, callbacks=[callback])
