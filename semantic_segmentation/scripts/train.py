@@ -1,22 +1,76 @@
-import os
-
-os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
-os.environ["CUDA_VISIBLE_DEVICES"] = "1"
-
 import argparse
-from datetime import datetime
 
 import matplotlib.pyplot as plt
 import numpy as np
+import pytorch_lightning as pl
+from pytorch_lightning.callbacks.early_stopping import EarlyStopping
+from pytorch_lightning.loggers.tensorboard import TensorBoardLogger
 import torch
 import torch.nn as nn
 import torch.optim as optim
+from torchmetrics import Accuracy
+from unet_bn import U2NET_lite
+
 from augment import get_transform
 from dataset import Dataset
-from torch.utils.tensorboard import SummaryWriter
-from torchmetrics import Accuracy
-from tqdm import tqdm
-from unet_bn import U2NET_lite
+
+
+class SuadSemseg(pl.LightningModule):
+    def __init__(self, net, lr, num_classes, **kwargs):
+        super().__init__()
+        self.net = net
+        self.loss = nn.CrossEntropyLoss(ignore_index=255)
+        self.lr = lr
+        self.accuracy = Accuracy(
+            task="multiclass", num_classes=num_classes, ignore_index=255
+        )
+        self.save_hyperparameters()
+
+    @staticmethod
+    def add_model_specific_args(parent_parser):
+        parser = parent_parser.add_argument_group("U2NetModel")
+        parser.add_argument("--lr", type=float, default=3e-4)
+        parser.add_argument("--num_classes", type=int, default=16)
+        return parent_parser
+
+    def forward(self, x):
+        pred = self.net(x)
+        return pred
+
+    def configure_optimizers(self):
+        optimizer = optim.RAdam(self.parameters(), lr=self.lr)
+        return optimizer
+
+    def _step(self, train_batch, batch_idx, split):
+        img, target = train_batch
+        pred = self.net(img)
+        loss = self.loss(pred, torch.squeeze(target.long()))
+        acc = self.accuracy(torch.argmax(pred, dim=1), torch.squeeze(target))
+        self.log(
+            split + "/loss",
+            loss,
+            on_step=True,
+            on_epoch=True,
+            prog_bar=True,
+            logger=True,
+        )
+        self.log(
+            split + "/acc", acc, on_step=True, on_epoch=True, prog_bar=True, logger=True
+        )
+        if batch_idx == 0:
+            self.logger.experiment.add_figure(
+                split + "/predictions",
+                show_results(img, pred, target),
+                global_step=self.current_epoch,
+            )
+        return loss
+
+    def training_step(self, train_batch, batch_idx):
+        return self._step(train_batch, batch_idx, split="train")
+
+    def validation_step(self, val_batch, batch_idx):
+        with torch.no_grad():
+            return self._step(val_batch, batch_idx, split="val")
 
 
 def show_results(imgs, preds, gts):
@@ -63,104 +117,36 @@ def show_results(imgs, preds, gts):
     return fig
 
 
-def train(model, train_ds, val_ds, optimizer, writer, epochs_no, patience=5):
-    cel_loss = nn.CrossEntropyLoss(ignore_index=255)
-    history = {"train_loss": [], "val_loss": []}
-    cooldown = 0
-    batch_size = 16
-    steps_train = len(train_ds) / batch_size
-    steps_val = len(val_ds) / batch_size
-    if torch.cuda.is_available():
-        device = torch.device("cuda")
-    else:
-        device = torch.device("cpu")
-    model.to(device)
-    accuracy = Accuracy(task="multiclass", num_classes=16, ignore_index=255).to(device)
-    train_loader = torch.utils.data.DataLoader(
-        train_ds, batch_size=batch_size, shuffle=True, num_workers=8
-    )
-    val_loader = torch.utils.data.DataLoader(
-        val_ds, batch_size=batch_size, shuffle=True, num_workers=8
-    )
-    print(f"len ds = {len(train_ds)}")
-    print(f"len dl = {len(train_loader)}")
-    for epoch in tqdm(range(epochs_no)):
-        model.train()
-        epoch_train_loss = 0
-        epoch_train_acc = 0
-        epoch_val_loss = 0
-        epoch_val_acc = 0
-        for i, data in enumerate(train_loader, 0):
-            img, target = data
-            img, target = img.to(device), target.to(device)
-            pred = model(img)
-            loss = cel_loss(pred, torch.squeeze(target.long()))
-            optimizer.zero_grad()
-            loss.backward()
-            optimizer.step()
-            epoch_train_loss += loss.cpu().detach().numpy()
-            epoch_train_acc += (
-                accuracy(torch.argmax(pred, dim=1), torch.squeeze(target))
-                .cpu()
-                .detach()
-                .numpy()
-            )
-            if i == 0:
-                writer.add_figure(
-                    "predictions", show_results(img, pred, target), global_step=epoch
-                )
-
-        with torch.no_grad():
-            model.eval()
-            for img, target in val_loader:
-                img, target = img.to(device), target.to(device)
-                pred = model(img)
-                epoch_val_loss += (
-                    cel_loss(pred, torch.squeeze(target.long())).cpu().detach().numpy()
-                )
-                epoch_val_acc += (
-                    accuracy(torch.argmax(pred, dim=1), torch.squeeze(target))
-                    .cpu()
-                    .detach()
-                    .numpy()
-                )
-
-        epoch_train_loss /= steps_train
-        epoch_train_acc /= steps_train
-        epoch_val_loss /= steps_val
-        epoch_val_acc /= steps_val
-        history["train_loss"].append(epoch_train_loss)
-        history["val_loss"].append(epoch_val_loss)
-
-        writer.add_scalar("training loss", epoch_train_loss, epoch)
-        writer.add_scalar("training accuracy", epoch_train_acc, epoch)
-        writer.add_scalar("validation loss", epoch_val_loss, epoch)
-        writer.add_scalar("validation accuracy", epoch_val_acc, epoch)
-
-        cur_loss = history["val_loss"][epoch]
-        if epoch != 0 and cur_loss >= history["val_loss"][epoch - 1]:
-            cooldown += 1
-            if cooldown == patience:
-                break
-        else:
-            cooldown = 0
-            torch.save(model.state_dict(), "model_weights.pth")
-    model.load_state_dict(torch.load("model_weights.pth"))
-    return model
-
-
 if __name__ == "__main__":
-    unique_name = datetime.now().strftime("%Y_%m_%d-%H_%M_%S")
-    writer = SummaryWriter("runs/u2net/" + unique_name)
+    architectures = dict(u2net=U2NET_lite)
     parser = argparse.ArgumentParser()
     parser.add_argument("--datafolder", type=str, default="")
-    parser.add_argument("--lr", type=float, default=3e-4)
+    parser.add_argument("--batch_size", type=int, default=16)
+    parser.add_argument("--net", type=str, default="u2net")
+    parser = SuadSemseg.add_model_specific_args(parser)
     args = parser.parse_args()
-    model = U2NET_lite()
-    # optimizer = optim.Adam(model.parameters(), lr=0.005)
-    optimizer = optim.RAdam(model.parameters(), lr=args.lr)
+    dict_args = vars(args)
+
+    net = architectures[args.net]()
 
     train_ds = Dataset(args.datafolder, get_transform(train=True))
     val_ds = Dataset(args.datafolder, get_transform(), train=False)
-
-    model = train(model, train_ds, val_ds, optimizer, writer, 100)
+    train_loader = torch.utils.data.DataLoader(
+        train_ds, batch_size=args.batch_size, shuffle=True, num_workers=8
+    )
+    val_loader = torch.utils.data.DataLoader(
+        val_ds, batch_size=args.batch_size, shuffle=True, num_workers=8
+    )
+    dict_args = dict(dict_args)
+    dict_args["net"] = net
+    model = SuadSemseg(**dict_args)
+    logger = TensorBoardLogger("tb_logs", name="u2net")
+    callback = EarlyStopping(monitor="val/loss", mode="min", patience=5)
+    trainer = pl.Trainer(
+        max_epochs=100,
+        logger=logger,
+        callbacks=[callback],
+        accelerator="gpu",
+        devices=[1],
+    )
+    trainer.fit(model, train_loader, val_loader)
