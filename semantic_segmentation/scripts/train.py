@@ -9,8 +9,8 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from torchmetrics import Accuracy
-from unet_bn import U2NET_lite
 
+from models import *
 from augment import get_transform
 from dataset import Dataset
 
@@ -122,12 +122,12 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--datafolder", type=str, default="")
     parser.add_argument("--batch_size", type=int, default=16)
-    parser.add_argument("--net", type=str, default="u2net")
+    parser.add_argument("--net", type=str, default="U2NET_lite")
     parser = SuadSemseg.add_model_specific_args(parser)
     args = parser.parse_args()
     dict_args = vars(args)
 
-    net = architectures[args.net]()
+    net = getattr(architectures, args.net)()
 
     train_ds = Dataset(args.datafolder, get_transform(train=True))
     val_ds = Dataset(args.datafolder, get_transform(), train=False)

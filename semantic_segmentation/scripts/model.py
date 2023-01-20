@@ -1,6 +1,6 @@
 import torch
 
-from semantic_segmentation.scripts.unet_bn import U2NET_lite
+from semantic_segmentation.scripts.models.unet_bn import U2NET_lite
 
 
 class UNETModel:
