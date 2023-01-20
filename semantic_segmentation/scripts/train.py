@@ -1,8 +1,3 @@
-# import os
-
-# os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
-# os.environ["CUDA_VISIBLE_DEVICES"] = "1"
-
 import argparse
 
 import matplotlib.pyplot as plt
@@ -66,9 +61,6 @@ class SuadSemseg(pl.LightningModule):
         acc = self.accuracy(torch.argmax(pred, dim=1), torch.squeeze(target))
         self.log("val_loss", loss)
         self.log("val_acc", acc)
-
-    def backward(self, trainer, loss, optimizer, optimizer_idx):
-        loss.backward()
 
 
 def show_results(imgs, preds, gts):
