@@ -141,7 +141,7 @@ if __name__ == "__main__":
     dict_args["net"] = net
     model = SuadSemseg(**dict_args)
     logger = TensorBoardLogger("tb_logs", name="u2net")
-    callback = EarlyStopping(monitor="val_loss", mode="min", patience=5)
+    callback = EarlyStopping(monitor="`val/loss", mode="min", patience=5)
     trainer = pl.Trainer(
         max_epochs=100,
         logger=logger,
