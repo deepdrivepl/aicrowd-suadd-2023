@@ -41,26 +41,36 @@ class SuadSemseg(pl.LightningModule):
         optimizer = optim.RAdam(self.parameters(), lr=self.lr)
         return optimizer
 
-    def training_step(self, train_batch, batch_idx):
+    def _step(self, train_batch, batch_idx, split):
         img, target = train_batch
         pred = self.net(img)
         loss = self.loss(pred, torch.squeeze(target.long()))
         acc = self.accuracy(torch.argmax(pred, dim=1), torch.squeeze(target))
-        self.log("train_loss", loss)
-        self.log("train_acc", acc)
+        self.log(
+            split + "/loss",
+            loss,
+            on_step=True,
+            on_epoch=True,
+            prog_bar=True,
+            logger=True,
+        )
+        self.log(
+            split + "/acc", acc, on_step=True, on_epoch=True, prog_bar=True, logger=True
+        )
         if batch_idx == 0:
             self.logger.experiment.add_figure(
-                "predictions", show_results(img, pred, target)
+                split + "/predictions",
+                show_results(img, pred, target),
+                global_step=self.current_epoch,
             )
         return loss
 
+    def training_step(self, train_batch, batch_idx):
+        return self._step(train_batch, batch_idx, split="train")
+
     def validation_step(self, val_batch, batch_idx):
-        img, target = val_batch
-        pred = self.net(img)
-        loss = self.loss(pred.detach(), torch.squeeze(target.long()))
-        acc = self.accuracy(torch.argmax(pred, dim=1), torch.squeeze(target))
-        self.log("val_loss", loss)
-        self.log("val_acc", acc)
+        with torch.no_grad():
+            return self._step(val_batch, batch_idx, split="val")
 
 
 def show_results(imgs, preds, gts):
