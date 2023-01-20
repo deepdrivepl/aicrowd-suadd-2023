@@ -10,9 +10,9 @@ import torch.nn as nn
 import torch.optim as optim
 from torchmetrics import Accuracy
 
-from models import *
 from augment import get_transform
 from dataset import Dataset
+import models
 
 
 class SuadSemseg(pl.LightningModule):
@@ -118,7 +118,6 @@ def show_results(imgs, preds, gts):
 
 
 if __name__ == "__main__":
-    architectures = dict(u2net=U2NET_lite)
     parser = argparse.ArgumentParser()
     parser.add_argument("--datafolder", type=str, default="")
     parser.add_argument("--batch_size", type=int, default=16)
@@ -127,7 +126,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
     dict_args = vars(args)
 
-    net = getattr(architectures, args.net)()
+    net = getattr(models, args.net)()
 
     train_ds = Dataset(args.datafolder, get_transform(train=True))
     val_ds = Dataset(args.datafolder, get_transform(), train=False)
