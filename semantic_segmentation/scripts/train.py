@@ -75,7 +75,7 @@ class SuadSemseg(pl.LightningModule):
 
 def show_results(imgs, preds, gts):
     fig, ax = plt.subplots(frameon=False)
-    fig.set_size_inches(6, 36)
+    fig.set_size_inches(12, 18)
     cmap = np.array(
         [
             (16, 64, 16),
@@ -121,7 +121,8 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--datafolder", type=str, default="")
     parser.add_argument("--batch_size", type=int, default=2)
-    parser.add_argument("--net", type=str, default="get_xunet")
+    parser.add_argument("--accu_batch_size", type=int, default=64)
+    parser.add_argument("--net", type=str, default="XUNET")
     parser = SuadSemseg.add_model_specific_args(parser)
     args = parser.parse_args()
     dict_args = vars(args)
@@ -147,6 +148,6 @@ if __name__ == "__main__":
         callbacks=[callback],
         accelerator="gpu",
         devices=[1],
-        accumulate_grad_batches=32,
+        accumulate_grad_batches=max(1, args.accu_batch_size // args.batch_size),
     )
     trainer.fit(model, train_loader, val_loader)

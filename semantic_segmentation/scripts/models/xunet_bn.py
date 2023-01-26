@@ -1,7 +1,7 @@
 from x_unet import XUnet
 
 
-def get_xunet():
+def XUNET():
     return XUnet(
         dim=64,
         channels=3,
