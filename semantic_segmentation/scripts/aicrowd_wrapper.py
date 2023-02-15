@@ -69,3 +69,5 @@ class AIcrowdWrapper:
 
         prediction_path = os.path.join(self.predictions_dir, filename)
         self.save_prediction(prediction_path, prediction)
+
+        return True
