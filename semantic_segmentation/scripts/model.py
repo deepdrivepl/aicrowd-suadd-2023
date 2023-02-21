@@ -1,15 +1,14 @@
 import albumentations as A
+import numpy as np
 import torch
 
-from semantic_segmentation.scripts.models.xunet_bn import XUNET
-
+from models import XUNET
+from pl_model import SuadSemseg
+import cv2
 
 class UNETModel:
     def __init__(self):
-        self.model = XUNET()
-        self.model.load_from_checkpoint(
-            torch.load("tb_logs/xunet/version_0/checkpoints")
-        )
+        self.model = SuadSemseg.load_from_checkpoint("tb_logs/xunet/version_0/checkpoints/epoch=45-step=276.ckpt")
 
     def segment_single_image(self, image_to_segment):
         """
@@ -21,16 +20,25 @@ class UNETModel:
             An 2D image with the pixels values corresponding
             to the label number
         """
-        image_size = image_to_segment.shape[:2]
+        infer_size = (512,512)
+        
+        image_size = image_to_segment.shape
+        image_to_segment = np.stack((image_to_segment,)*3, axis=-1)
+        image_to_segment = cv2.resize(image_to_segment, infer_size)
+        image_to_segment = torch.from_numpy(image_to_segment).permute(2,0,1).unsqueeze(0)
+        image_to_segment = (image_to_segment/128.0)-0.5
+        
+        
         if torch.cuda.is_available():
             device = torch.device("cuda")
         else:
             device = torch.device("cpu")
+        
+        image_to_segment = image_to_segment.to(device)
+        
         self.model.to(device)
         self.model.eval()
         pred = self.model(image_to_segment)
-        segmentation_results = torch.argmax(pred, dim=1).cpu().detach().numpy()
-        segmentation_results = A.Resize(*image_size, interpolation=0)(
-            segmentation_results
-        )
+        segmentation_results = torch.argmax(pred, dim=1).cpu().detach().numpy()[0]
+        segmentation_results = A.Resize(*image_size, interpolation=0)(image=segmentation_results)['image']
         return segmentation_results
