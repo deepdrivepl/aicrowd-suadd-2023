@@ -2,13 +2,13 @@ import albumentations as A
 import numpy as np
 import torch
 
-from models import XUNET
+import models
 from pl_model import SuadSemseg
 import cv2
 
 class UNETModel:
     def __init__(self):
-        self.model = SuadSemseg.load_from_checkpoint("tb_logs/xunet/version_0/checkpoints/epoch=45-step=276.ckpt")
+        self.model = SuadSemseg.load_from_checkpoint("tb_logs/unet/version_1/checkpoints/epoch=99-step=200.ckpt")
 
     def segment_single_image(self, image_to_segment):
         """
@@ -38,7 +38,8 @@ class UNETModel:
         
         self.model.to(device)
         self.model.eval()
-        pred = self.model(image_to_segment)
+        with torch.no_grad():
+            segmentation_results = self.model(image_to_segment)
         segmentation_results = torch.argmax(pred, dim=1).cpu().detach().numpy()[0]
         segmentation_results = A.Resize(*image_size, interpolation=0)(image=segmentation_results)['image']
         return segmentation_results
