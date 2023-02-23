@@ -34,7 +34,7 @@ if __name__ == "__main__":
     dict_args["net"] = net
     model = SuadSemseg(**dict_args)
     logger = TensorBoardLogger("tb_logs", name="xunet", default_hp_metric=False)
-    callback = EarlyStopping(monitor="val/loss", mode="min", patience=5)
+    callback = EarlyStopping(monitor="val/loss", mode="min", patience=10)
     trainer = pl.Trainer(
         max_epochs=100,
         logger=logger,

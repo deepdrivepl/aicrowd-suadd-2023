@@ -1,3 +1,3 @@
-from semantic_segmentation.scripts.model import UNETModel
+from model import UNETModel
 
 MySegmentationModel = UNETModel
