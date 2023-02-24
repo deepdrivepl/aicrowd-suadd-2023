@@ -53,8 +53,9 @@ class TestDataset(torch.utils.data.Dataset):
         # load images
         img_path = os.path.join(self.root, "inputs", self.imgs[idx])
         img = Image.open(img_path).convert("RGB")
+        img = np.array(img)
         if self.transforms is not None:
-            img = self.transforms(img)
+            img = self.transforms(image=img)
 
         return img, self.imgs[idx]  # for saving purposes
 
