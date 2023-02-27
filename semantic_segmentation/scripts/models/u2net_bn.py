@@ -157,3 +157,21 @@ def U2NET_lite():
         "stage1d": ["De_1", (7, 128, 16, 64), 64],
     }
     return U2NET(cfgs=lite, out_ch=16)
+
+def U2NET_full():
+    full = {
+        # cfgs for building RSUs and sides
+        # {stage : [name, (height(L), in_ch, mid_ch, out_ch, dilated), side]}
+        'stage1': ['En_1', (7, 3, 32, 64), -1],
+        'stage2': ['En_2', (6, 64, 32, 128), -1],
+        'stage3': ['En_3', (5, 128, 64, 256), -1],
+        'stage4': ['En_4', (4, 256, 128, 512), -1],
+        'stage5': ['En_5', (4, 512, 256, 512, True), -1],
+        'stage6': ['En_6', (4, 512, 256, 512, True), 512],
+        'stage5d': ['De_5', (4, 1024, 256, 512, True), 512],
+        'stage4d': ['De_4', (4, 1024, 128, 256), 256],
+        'stage3d': ['De_3', (5, 512, 64, 128), 128],
+        'stage2d': ['De_2', (6, 256, 32, 64), 64],
+        'stage1d': ['De_1', (7, 128, 16, 64), 64],
+    }
+    return U2NET(cfgs=full, out_ch=16)

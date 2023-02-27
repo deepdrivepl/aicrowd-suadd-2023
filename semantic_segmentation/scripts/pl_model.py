@@ -79,8 +79,10 @@ class SuadSemseg(pl.LightningModule):
     def _step(self, train_batch, batch_idx, split):
         img, target = train_batch
         pred = self.net(img)
-        loss = self.loss(pred, torch.squeeze(target.long()))
-        acc = self.accuracy(torch.argmax(pred, dim=1), torch.squeeze(target))
+        # loss = self.loss(pred, torch.squeeze(target.long()))
+        # acc = self.accuracy(torch.argmax(pred, dim=1), torch.squeeze(target))
+        loss = self.loss(pred, target.long())
+        acc = self.accuracy(torch.argmax(pred, dim=1), target)
         self.log(
             split + "/loss",
             loss,
@@ -106,3 +108,7 @@ class SuadSemseg(pl.LightningModule):
     def validation_step(self, val_batch, batch_idx):
         with torch.no_grad():
             return self._step(val_batch, batch_idx, split="val")
+        
+    def test_step(self, test_batch, batch_idx):
+        with torch.no_grad():
+            return self._step(test_batch, batch_idx, split="test")
